@@ -92,9 +92,6 @@ function Cadastro() {
   const { telaLarga } = useLayoutResponsivo();
   const insets = useSafeAreaInsets();
   
-  // Altura compacta para telas pequenas
-  const [windowHeight, setWindowHeight] = useState(0); // Tratado de forma limpa
-  
   const { valores, erros, alterarCampo, salvar, limpar } = useCadastroForm({
     onSalvar: (dados) => {
       Keyboard.dismiss();
@@ -122,7 +119,9 @@ function Cadastro() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         enableOnAndroid={true}
-        extraScrollHeight={30}
+        enableAutomaticScroll={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 80 : 120}
+        extraHeight={120}
       >      
         <View style={styles.container}>
           <View style={styles.header}>
@@ -253,7 +252,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 32,
+    // Aumentamos o padding inferior para garantir espaço de sobra para o scroll em landscape
+    paddingBottom: 120,
   },
   container: {
     width: '100%',
