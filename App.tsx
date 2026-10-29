@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -11,7 +10,6 @@ import {
   Text,
   TextInput,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import {
   SafeAreaProvider,
@@ -20,12 +18,8 @@ import {
 } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
-const initialValues = {
-  nome: '',
-  email: '',
-  curso: '',
-  senha: '',
-};
+// Importando a lógica e os hooks do seu arquivo validation.ts
+import { useCadastroForm, useLayoutResponsivo } from './validation';
 
 function Campo({
   label,
@@ -94,72 +88,30 @@ function Campo({
 }
 
 function Cadastro() {
-  const { width, height } = useWindowDimensions();
+  // Utilizando os hooks responsivos e de formulário vindos do validation.ts
+  const { telaLarga } = useLayoutResponsivo();
   const insets = useSafeAreaInsets();
+  
+  // Altura compacta para telas pequenas
+  const [windowHeight, setWindowHeight] = useState(0); // Tratado de forma limpa
+  
+  const { valores, erros, alterarCampo, salvar, limpar } = useCadastroForm({
+    onSalvar: (dados) => {
+      Keyboard.dismiss();
+      Alert.alert(
+        'Dados validados!',
+        `Bem-vindo(a), ${dados.nome}! O formulário está correto.`
+      );
+    },
+  });
 
-  const wide = width - insets.left - insets.right - 48 >= 600;
-  const compact = height < 500;
-
-  const [values, setValues] = useState({ ...initialValues });
-  const [errors, setErrors] = useState({});
   const [resetKey, setResetKey] = useState(0);
 
-  function updateField(field, value) {
-    setValues((current) => ({ ...current, [field]: value }));
-
-    // Remove apenas o erro do campo que está sendo corrigido.
-    setErrors((current) => {
-      const next = { ...current };
-      delete next[field];
-      return next;
-    });
-  }
-
-  function salvar() {
-    const nextErrors = {};
-
-    if (!values.nome.trim()) {
-      nextErrors.nome = 'Informe seu nome.';
-    }
-
-    const email = values.email.trim();
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      nextErrors.email = 'Informe um e-mail válido.';
-    }
-
-    if (!values.curso.trim()) {
-      nextErrors.curso = 'Informe seu curso.';
-    }
-
-    if (values.senha.length !== 0 && values.senha.length < 8) {
-      nextErrors.senha = 'A senha deve ter pelo menos 8 caracteres.';
-    }
-
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) return;
-
-    Keyboard.dismiss();
-
-    // Integre sua API aqui. Não armazene a senha em texto puro.
-    Alert.alert(
-      'Dados validados!',
-      'O formulário está correto. O envio do cadastro ainda depende da integração com seu servidor.'
-    );
-  }
-
-  function limpar() {
-    Keyboard.dismiss();
-    setValues({ ...initialValues });
-    setErrors({});
-    setResetKey((current) => current + 1);
-  }
-
+  // Atalho para mapear os campos para o componente Campo
   const field = (name) => ({
-    value: values[name],
-    error: errors[name],
-    onChangeText: (text) => updateField(name, text),
+    value: valores[name],
+    error: erros[name],
+    onChangeText: (text) => alterarCampo(name, text),
   });
 
   return (
@@ -170,245 +122,118 @@ function Cadastro() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         enableOnAndroid={true}
-        extraScrollHeight={30} // Empurra o campo um pouco mais para cima do teclado
+        extraScrollHeight={30}
       >      
-          <ScrollView
-          contentContainerStyle={[
-            styles.scroll,
-            compact && { paddingTop: 12 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-        >
-          <View style={styles.container}>
-            <View style={styles.header}>
-              <View style={styles.brand}>
-                <View style={styles.brandIcon}>
-                  <Text style={styles.brandIconText}>C</Text>
-                </View>
-                <Text style={styles.brandName}>Cadastro</Text>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.brand}>
+              <View style={styles.brandIcon}>
+                <Text style={styles.brandIconText}>R</Text>
+              </View>
+              <Text style={styles.brandName}>Responsivo</Text>
+            </View>
+
+            <Text style={styles.badge}>Cadastro</Text>
+          </View>
+
+          <View style={styles.intro}>
+            <Text accessibilityRole="header" style={styles.title}>
+              Crie seu cadastro
+            </Text>
+            <Text style={styles.subtitle}>
+              Seu próximo capítulo começa por aqui.
+            </Text>
+          </View>
+
+          <View style={styles.sectionHeading}>
+            <Text style={styles.sectionTitle}>Seus dados</Text>
+            <Text style={styles.requiredNote}>* Campos obrigatórios</Text>
+          </View>
+
+          <View key={resetKey} style={styles.form}>
+            {/* Linha 1: Nome e E-mail (Ficam lado a lado se telaLarga for true) */}
+            <View style={[styles.row, telaLarga && styles.rowWide]}>
+              <View style={telaLarga && styles.column}>
+                <Campo
+                  {...field('nome')}
+                  label="Nome"
+                  required
+                  placeholder="Como você se chama?"
+                  autoCapitalize="words"
+                  autoComplete="name"
+                />
               </View>
 
-              <Text style={styles.badge}>Cadastro</Text>
-            </View>
-
-            <View style={[styles.intro, compact && { marginBottom: 20 }]}>
-              <Text
-                accessibilityRole="header"
-                style={[styles.title, compact && { fontSize: 24 }]}
-              >
-                Crie seu cadastro
-              </Text>
-              <Text style={styles.subtitle}>
-                Seu próximo capítulo começa por aqui.
-              </Text>
-            </View>
-
-            <View style={styles.sectionHeading}>
-              <Text style={styles.sectionTitle}>Seus dados</Text>
-              <Text style={styles.requiredNote}>* Campos obrigatórios</Text>
-            </View>
-
-            <View key={resetKey} style={styles.form}>
-              <View style={[styles.row, wide && styles.rowWide]}>
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('nome')}
-                    label="Nome"
-                    required
-                    placeholder="Como você se chama?"
-                    autoCapitalize="words"
-                    autoComplete="name"
-                  />
-                </View>
-
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('email')}
-                    label="E-mail"
-                    placeholder="voce@exemplo.com"
-                    hint="Opcional. Informe um e-mail válido."
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.row, wide && styles.rowWide]}>
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('curso')}
-                    label="Curso"
-                    required
-                    placeholder="Ex.: Design de interfaces"
-                    autoCapitalize="sentences"
-                  />
-                </View>
-
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('senha')}
-                    label="Senha"
-                    password
-                    placeholder="Crie uma senha"
-                    hint="Mínimo de 8 caracteres."
-                    autoCapitalize="none"
-                    autoComplete="new-password"
-                    returnKeyType="done"
-                    onSubmitEditing={salvar}
-                  />
-                </View>
+              <View style={telaLarga && styles.column}>
+                <Campo
+                  {...field('email')}
+                  label="E-mail"
+                  placeholder="voce@exemplo.com"
+                  hint="Opcional. Informe um e-mail válido."
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
               </View>
             </View>
 
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={salvar}
-                style={({ pressed }) => [
-                  styles.saveButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.saveText}>Salvar →</Text>
-              </Pressable>
+            {/* Linha 2: Curso e Senha */}
+            <View style={[styles.row, telaLarga && styles.rowWide]}>
+              <View style={telaLarga && styles.column}>
+                <Campo
+                  {...field('curso')}
+                  label="Curso"
+                  required
+                  placeholder="Ex.: Design de interfaces"
+                  autoCapitalize="sentences"
+                />
+              </View>
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={limpar}
-                style={({ pressed }) => [
-                  styles.clearButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.clearText}>Limpar</Text>
-              </Pressable>
+              <View style={telaLarga && styles.column}>
+                <Campo
+                  {...field('senha')}
+                  label="Senha"
+                  password
+                  placeholder="Crie uma senha"
+                  hint="Mínimo de 8 caracteres."
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  returnKeyType="done"
+                  onSubmitEditing={salvar}
+                />
+              </View>
             </View>
           </View>
-        </ScrollView>        
+
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={salvar}
+              style={({ pressed }) => [
+                styles.saveButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.saveText}>Salvar →</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                Keyboard.dismiss();
+                limpar();
+                setResetKey((current) => current + 1);
+              }}
+              style={({ pressed }) => [
+                styles.clearButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.clearText}>Limpar</Text>
+            </Pressable>
+          </View>
+        </View>
       </KeyboardAwareScrollView>
-
-      {/* <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={[
-            styles.scroll,
-            compact && { paddingTop: 12 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-        >
-          <View style={styles.container}>
-            <View style={styles.header}>
-              <View style={styles.brand}>
-                <View style={styles.brandIcon}>
-                  <Text style={styles.brandIconText}>T</Text>
-                </View>
-                <Text style={styles.brandName}>trama</Text>
-              </View>
-
-              <Text style={styles.badge}>Cadastro</Text>
-            </View>
-
-            <View style={[styles.intro, compact && { marginBottom: 20 }]}>
-              <Text
-                accessibilityRole="header"
-                style={[styles.title, compact && { fontSize: 24 }]}
-              >
-                Crie seu cadastro
-              </Text>
-              <Text style={styles.subtitle}>
-                Seu próximo capítulo começa por aqui.
-              </Text>
-            </View>
-
-            <View style={styles.sectionHeading}>
-              <Text style={styles.sectionTitle}>Seus dados</Text>
-              <Text style={styles.requiredNote}>* Campos obrigatórios</Text>
-            </View>
-
-            <View key={resetKey} style={styles.form}>
-              <View style={[styles.row, wide && styles.rowWide]}>
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('nome')}
-                    label="Nome"
-                    required
-                    placeholder="Como você se chama?"
-                    autoCapitalize="words"
-                    autoComplete="name"
-                  />
-                </View>
-
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('email')}
-                    label="E-mail"
-                    placeholder="voce@exemplo.com"
-                    hint="Opcional. Informe um e-mail válido."
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.row, wide && styles.rowWide]}>
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('curso')}
-                    label="Curso"
-                    required
-                    placeholder="Ex.: Design de interfaces"
-                    autoCapitalize="sentences"
-                  />
-                </View>
-
-                <View style={wide && styles.column}>
-                  <Campo
-                    {...field('senha')}
-                    label="Senha"
-                    password
-                    placeholder="Crie uma senha"
-                    hint="Mínimo de 8 caracteres."
-                    autoCapitalize="none"
-                    autoComplete="new-password"
-                    returnKeyType="done"
-                    onSubmitEditing={salvar}
-                  />
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={salvar}
-                style={({ pressed }) => [
-                  styles.saveButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.saveText}>Salvar →</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={limpar}
-                style={({ pressed }) => [
-                  styles.clearButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.clearText}>Limpar</Text>
-              </Pressable>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView> */}
     </SafeAreaView>
   );
 }
